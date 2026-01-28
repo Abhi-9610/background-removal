@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Removal API - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .upload-box:hover {
+            background: #eef1ff;
+            border-color: #764ba2;
+        }
+
+        .upload-box.dragover {
+            background: #e5e9ff;
+            border-color: #764ba2;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .results {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .results.visible {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .result-item {
+            text-align: center;
+        }
+
+        .result-item h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3rem;
+        }
+
+        .result-item img {
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .checkerboard {
+            background-image: 
+                linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
+                linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
+                linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            padding: 10px;
+            border-radius: 15px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .loading.visible {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid rgba(102, 126, 234, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #667eea;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error.visible {
+            display: block;
+        }
+
+        .download-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 25px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .quality-settings {
+            background: #f8f9ff;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .quality-settings h3 {
+            margin-bottom: 20px;
+            color: #667eea;
+            text-align: center;
+        }
+
+        .setting-group {
+            margin-bottom: 15px;
+        }
+
+        .setting-group label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .setting-group select,
+        .setting-group input[type="range"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .setting-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .setting-group input[type="range"] {
+            margin-top: 5px;
+        }
+
+        .advanced {
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Background Removal API</h1>
+            <p>Upload an image and watch the magic happen!</p>
+        </div>
+
+        <div class="card">
+            <div class="upload-section">
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-icon">📸</div>
+                    <h2>Drop your image here</h2>
+                    <p>or click to browse</p>
+                    <p style="color: #999; margin-top: 10px; font-size: 0.9rem;">Supports PNG, JPG, JPEG, WebP</p>
+                </div>
+                <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg,image/webp">
+                
+                <!-- Quality Settings -->
+                <div class="quality-settings">
+                    <h3>🎨 Quality Settings</h3>
+                    <div class="setting-group">
+                        <label>
+                            AI Model:
+                            <select id="modelSelect">
+                                <option value="u2net" selected>U2-Net - Fast & Reliable (⭐ Recommended)</option>
+                                <option value="u2net_human_seg">U2-Net - Human Portraits</option>
+                                <option value="isnet-general-use">ISNet - Best Quality (Slower first-time)</option>
+                                <option value="isnet-anime">ISNet - Anime/Cartoon (Slower first-time)</option>
+                            </select>
+                        </label>
+                        <p style="font-size: 0.85rem; color: #666; margin-top: 5px;">
+                            📌 Note: ISNet models provide higher quality but may take 30-60 seconds on first use while loading.
+                        </p>
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="alphaMatting" checked>
+                            Enable Alpha Matting (Smoother Edges)
+                        </label>
+                    </div>
+                    <div class="setting-group advanced" id="advancedSettings">
+                        <label>
+                            Edge Smoothness: <span id="erodeValue">10</span>
+                            <input type="range" id="erodeSize" min="1" max="20" value="10">
+                        </label>
+                        <label>
+                            Foreground Threshold: <span id="fgValue">240</span>
+                            <input type="range" id="fgThreshold" min="200" max="255" value="240">
+                        </label>
+                        <label>
+                            Background Threshold: <span id="bgValue">10</span>
+                            <input type="range" id="bgThreshold" min="1" max="50" value="10">
+                        </label>
+                    </div>
+                </div>
+                
+                <button class="btn" id="uploadBtn" disabled>Remove Background with Enhanced Quality</button>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p id="loadingText">Processing your image with AI...</p>
+                <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">
+                    <span id="loadingDetails">Preprocessing and optimizing...</span>
+                </p>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <div class="results" id="results">
+                <div class="result-item">
+                    <h3>Original Image</h3>
+                    <img id="originalImg" alt="Original">
+                </div>
+                <div class="result-item">
+                    <h3>Background Removed</h3>
+                    <div class="checkerboard">
+                        <img id="processedImg" alt="Processed">
+                    </div>
+                    <a class="download-btn" id="downloadBtn" download="no-background.png">
+                        ⬇️ Download Result
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const originalImg = document.getElementById('originalImg');
+        const processedImg = document.getElementById('processedImg');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let selectedFile = null;
+
+        // Click to upload
+        uploadBox.addEventListener('click', () => fileInput.click());
+
+        // File selected
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        // Drag and drop
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('dragover');
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragover');
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        function handleFile(file) {
+            const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                showError('Please select a valid image file (PNG, JPG, JPEG, WebP)');
+                return;
+            }
+
+            selectedFile = file;
+            uploadBtn.disabled = false;
+            uploadBox.querySelector('h2').textContent = `Selected: ${file.name}`;
+            results.classList.remove('visible');
+            error.classList.remove('visible');
+        }
+
+        // Update range value displays
+        document.getElementById('erodeSize').addEventListener('input', (e) => {
+            document.getElementById('erodeValue').textContent = e.target.value;
+        });
+        document.getElementById('fgThreshold').addEventListener('input', (e) => {
+            document.getElementById('fgValue').textContent = e.target.value;
+        });
+        document.getElementById('bgThreshold').addEventListener('input', (e) => {
+            document.getElementById('bgValue').textContent = e.target.value;
+        });
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            // Add quality settings
+            const modelSelect = document.getElementById('modelSelect');
+            const selectedModel = modelSelect.value;
+            const modelName = modelSelect.options[modelSelect.selectedIndex].text;
+            
+            formData.append('model', selectedModel);
+            formData.append('alpha_matting', document.getElementById('alphaMatting').checked);
+            formData.append('alpha_matting_foreground_threshold', document.getElementById('fgThreshold').value);
+            formData.append('alpha_matting_background_threshold', document.getElementById('bgThreshold').value);
+            formData.append('alpha_matting_erode_size', document.getElementById('erodeSize').value);
+
+            loading.classList.add('visible');
+            uploadBtn.disabled = true;
+            error.classList.remove('visible');
+            results.classList.remove('visible');
+
+            // Progress messages
+            const loadingText = document.getElementById('loadingText');
+            const loadingDetails = document.getElementById('loadingDetails');
+            
+            loadingText.textContent = 'Processing your image with AI...';
+            loadingDetails.textContent = `Using ${modelName}...`;
+
+            const startTime = Date.now();
+
+            // Simulate progress updates
+            const progressInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                if (elapsed < 3) {
+                    loadingDetails.textContent = 'Preprocessing and optimizing image...';
+                } else if (elapsed < 8) {
+                    loadingDetails.textContent = 'AI analyzing and removing background...';
+                } else if (elapsed < 12) {
+                    loadingDetails.textContent = 'Refining edges and smoothing...';
+                } else {
+                    loadingDetails.textContent = 'Almost done, finalizing quality...';
+                }
+            }, 100);
+
+            try {
+                // Create abort controller for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+                
+                const response = await fetch('http://localhost:8000/remove-background', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                clearInterval(progressInterval);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to process image');
+                }
+
+                loadingText.textContent = 'Success!';
+                loadingDetails.textContent = 'Loading results...';
+
+                const result = await response.json();
+
+                // Display images
+                originalImg.src = `data:image/${result.original_image.format};base64,${result.original_image.data}`;
+                processedImg.src = `data:image/png;base64,${result.processed_image.data}`;
+                downloadBtn.href = `data:image/png;base64,${result.processed_image.data}`;
+
+                const processingTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log(`Processing completed in ${processingTime}s`);
+
+                results.classList.add('visible');
+            } catch (err) {
+                clearInterval(progressInterval);
+                if (err.name === 'AbortError') {
+                    showError('Request timed out. ISNet models may take longer on first use. Try using U2-Net model or wait and try again.');
+                } else {
+                    showError(err.message || 'An error occurred. Please try again.');
+                }
+            } finally {
+                loading.classList.remove('visible');
+                uploadBtn.disabled = false;
+            }
+        });
+
+        function showError(message) {
+            error.textContent = `Error: ${message}`;
+            error.classList.add('visible');
+        }
+    </script>
+</body>
+</html>
