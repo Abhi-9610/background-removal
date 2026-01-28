@@ -190,7 +190,7 @@ async def remove_background(
     alpha_matting_foreground_threshold: int = Form(default=232),
     alpha_matting_background_threshold: int = Form(default=50),
     alpha_matting_erode_size: int = Form(default=20),
-    post_process_mask: bool = Form(default=True)
+    post_process_mask: bool = Form(default=False)
 ):
     """
     Remove background from uploaded image with advanced quality options
@@ -367,7 +367,7 @@ async def remove_background_binary(
     alpha_matting_foreground_threshold: int = Form(default=232),
     alpha_matting_background_threshold: int = Form(default=50),
     alpha_matting_erode_size: int = Form(default=20),
-    post_process_mask: bool = Form(default=True)
+    post_process_mask: bool = Form(default=False)
 ):
     """
     Remove background from uploaded image and return the processed image as binary
