@@ -185,12 +185,12 @@ async def health_check():
 @app.post("/remove-background")
 async def remove_background(
     file: UploadFile = File(...),
-    model: str = Form(default="u2net"),
+    model: str = Form(default="isnet-general-use"),
     alpha_matting: bool = Form(default=True),
     alpha_matting_foreground_threshold: int = Form(default=232),
     alpha_matting_background_threshold: int = Form(default=50),
     alpha_matting_erode_size: int = Form(default=20),
-    post_process_mask: bool = Form(default=False)
+    post_process_mask: bool = Form(default=True)
 ):
     """
     Remove background from uploaded image with advanced quality options
@@ -362,11 +362,11 @@ async def remove_background(
 @app.post("/remove-background-binary")
 async def remove_background_binary(
     file: UploadFile = File(...),
-    model: str = Form(default="u2net"),
+    model: str = Form(default="isnet-general-use"),
     alpha_matting: bool = Form(default=True),
-    alpha_matting_foreground_threshold: int = Form(default=240),
-    alpha_matting_background_threshold: int = Form(default=10),
-    alpha_matting_erode_size: int = Form(default=10),
+    alpha_matting_foreground_threshold: int = Form(default=232),
+    alpha_matting_background_threshold: int = Form(default=50),
+    alpha_matting_erode_size: int = Form(default=20),
     post_process_mask: bool = Form(default=True)
 ):
     """
