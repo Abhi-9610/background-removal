@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from rembg import remove, new_session
 from PIL import Image, ImageFilter, ImageEnhance
 import io
@@ -8,6 +9,7 @@ import base64
 from typing import Dict, Optional, Tuple
 import logging
 import numpy as np
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -141,14 +143,35 @@ def validate_result(original: Image.Image, processed: Image.Image) -> bool:
         return True  # Don't fail on validation errors
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    """Root endpoint with API information"""
+    """Serve the demo page"""
+    demo_path = Path(__file__).parent / "demo.html"
+    if demo_path.exists():
+        return FileResponse(demo_path)
+    return HTMLResponse("""
+        <html>
+            <body>
+                <h1>Background Removal API</h1>
+                <p>API is running! Demo page not found.</p>
+                <p>Visit <a href="/docs">/docs</a> for API documentation.</p>
+            </body>
+        </html>
+    """)
+
+@app.get("/api")
+async def api_info():
+    """API endpoint information"""
     return {
-        "message": "Background Removal API",
+        "message": "Background Removal API - Enhanced",
+        "version": "2.0.0",
         "endpoints": {
-            "/remove-background": "POST - Upload image to remove background",
-            "/health": "GET - Health check"
+            "/": "GET - Demo page",
+            "/api": "GET - API information",
+            "/health": "GET - Health check",
+            "/remove-background": "POST - Remove background (JSON response)",
+            "/remove-background-binary": "POST - Remove background (PNG file)",
+            "/docs": "GET - Interactive API documentation"
         }
     }
 
@@ -162,26 +185,33 @@ async def health_check():
 @app.post("/remove-background")
 async def remove_background(
     file: UploadFile = File(...),
-    model: str = Form(default="isnet-general-use"),
+    model: str = Form(default="u2net"),
     alpha_matting: bool = Form(default=True),
-    alpha_matting_foreground_threshold: int = Form(default=240),
-    alpha_matting_background_threshold: int = Form(default=10),
-    alpha_matting_erode_size: int = Form(default=10)
+    alpha_matting_foreground_threshold: int = Form(default=232),
+    alpha_matting_background_threshold: int = Form(default=50),
+    alpha_matting_erode_size: int = Form(default=20),
+    post_process_mask: bool = Form(default=False)
 ):
     """
     Remove background from uploaded image with advanced quality options
     
     Args:
         file: Image file (PNG, JPG, JPEG, WebP)
-        model: AI model to use (default: isnet-general-use for best quality)
-            - u2net: Fast, good quality (default original)
-            - isnet-general-use: Better quality, more accurate edges (recommended)
+        model: AI model to use (default: u2net for reliability)
+            - u2net: Fast, reliable, good quality (recommended)
+            - isnet-general-use: Better quality, more accurate edges (slower first time)
             - u2net_human_seg: Optimized for human portraits
             - isnet-anime: Best for anime/cartoon images
-        alpha_matting: Enable alpha matting for smoother edges (default: True)
+        alpha_matting: Enable AI-powered alpha matting for smoother edges (default: True)
+            Uses sophisticated matting algorithm for perfect edge detection
         alpha_matting_foreground_threshold: Foreground threshold (1-255, default: 240)
+            Higher = more conservative (keeps more of subject)
         alpha_matting_background_threshold: Background threshold (1-255, default: 10)
+            Lower = removes more background
         alpha_matting_erode_size: Edge smoothing size (1-20, default: 10)
+            Controls transition smoothness between subject and background
+        post_process_mask: Apply additional mask refinement (default: True)
+            Further enhances edges using model predictions
     
     Returns:
         JSON with base64 encoded original and background-removed images
@@ -242,7 +272,8 @@ async def remove_background(
                     alpha_matting=alpha_matting,
                     alpha_matting_foreground_threshold=alpha_matting_foreground_threshold,
                     alpha_matting_background_threshold=alpha_matting_background_threshold,
-                    alpha_matting_erode_size=alpha_matting_erode_size
+                    alpha_matting_erode_size=alpha_matting_erode_size,
+                    post_process_mask=post_process_mask
                 )
                 
                 # Validate result
@@ -266,7 +297,8 @@ async def remove_background(
                             alpha_matting=alpha_matting,
                             alpha_matting_foreground_threshold=alpha_matting_foreground_threshold,
                             alpha_matting_background_threshold=alpha_matting_background_threshold,
-                            alpha_matting_erode_size=alpha_matting_erode_size
+                            alpha_matting_erode_size=alpha_matting_erode_size,
+                            post_process_mask=post_process_mask
                         )
                     except Exception as fallback_error:
                         raise HTTPException(
@@ -330,25 +362,27 @@ async def remove_background(
 @app.post("/remove-background-binary")
 async def remove_background_binary(
     file: UploadFile = File(...),
-    model: str = Form(default="isnet-general-use"),
+    model: str = Form(default="u2net"),
     alpha_matting: bool = Form(default=True),
     alpha_matting_foreground_threshold: int = Form(default=240),
     alpha_matting_background_threshold: int = Form(default=10),
-    alpha_matting_erode_size: int = Form(default=10)
+    alpha_matting_erode_size: int = Form(default=10),
+    post_process_mask: bool = Form(default=True)
 ):
     """
     Remove background from uploaded image and return the processed image as binary
     
     Args:
         file: Image file (PNG, JPG, JPEG, WebP)
-        model: AI model to use (isnet-general-use, u2net, u2net_human_seg, isnet-anime)
-        alpha_matting: Enable alpha matting for smoother edges
+        model: AI model to use (u2net, isnet-general-use, u2net_human_seg, isnet-anime)
+        alpha_matting: Enable AI-powered alpha matting for smoother edges
         alpha_matting_foreground_threshold: Foreground threshold (1-255)
         alpha_matting_background_threshold: Background threshold (1-255)
         alpha_matting_erode_size: Edge smoothing size (1-20)
+        post_process_mask: Apply additional mask refinement
     
     Returns:
-        PNG image with transparent background
+        PNG image with transparent background (perfect edges with AI matting)
     """
     try:
         # Validate file type
@@ -404,7 +438,8 @@ async def remove_background_binary(
                     alpha_matting=alpha_matting,
                     alpha_matting_foreground_threshold=alpha_matting_foreground_threshold,
                     alpha_matting_background_threshold=alpha_matting_background_threshold,
-                    alpha_matting_erode_size=alpha_matting_erode_size
+                    alpha_matting_erode_size=alpha_matting_erode_size,
+                    post_process_mask=post_process_mask
                 )
                 
                 if validate_result(img_for_processing, output_image):
@@ -419,7 +454,8 @@ async def remove_background_binary(
                             alpha_matting=alpha_matting,
                             alpha_matting_foreground_threshold=alpha_matting_foreground_threshold,
                             alpha_matting_background_threshold=alpha_matting_background_threshold,
-                            alpha_matting_erode_size=alpha_matting_erode_size
+                            alpha_matting_erode_size=alpha_matting_erode_size,
+                            post_process_mask=post_process_mask
                         )
                     except Exception as fallback_error:
                         raise HTTPException(

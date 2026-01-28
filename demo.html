@@ -249,6 +249,9 @@
         <div class="header">
             <h1>🎨 Background Removal API</h1>
             <p>Upload an image and watch the magic happen!</p>
+            <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 10px;">
+                ✨ Enhanced with AI Alpha Matting & Model Prediction
+            </p>
         </div>
 
         <div class="card">
@@ -281,8 +284,20 @@
                     <div class="setting-group">
                         <label>
                             <input type="checkbox" id="alphaMatting" checked>
-                            Enable Alpha Matting (Smoother Edges)
+                            ✨ Enable AI Alpha Matting (Perfect Edge Detection)
                         </label>
+                        <p style="font-size: 0.85rem; color: #666; margin-top: 3px; margin-left: 24px;">
+                            Uses advanced AI model prediction for professional-quality edges
+                        </p>
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="postProcessMask" checked>
+                            🎯 Post-Process Mask Refinement (Enhanced Quality)
+                        </label>
+                        <p style="font-size: 0.85rem; color: #666; margin-top: 3px; margin-left: 24px;">
+                            Additional AI-based mask enhancement for perfect results
+                        </p>
                     </div>
                     <div class="setting-group advanced" id="advancedSettings">
                         <label>
@@ -412,6 +427,7 @@
             
             formData.append('model', selectedModel);
             formData.append('alpha_matting', document.getElementById('alphaMatting').checked);
+            formData.append('post_process_mask', document.getElementById('postProcessMask').checked);
             formData.append('alpha_matting_foreground_threshold', document.getElementById('fgThreshold').value);
             formData.append('alpha_matting_background_threshold', document.getElementById('bgThreshold').value);
             formData.append('alpha_matting_erode_size', document.getElementById('erodeSize').value);
@@ -449,7 +465,10 @@
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
                 
-                const response = await fetch('http://localhost:8000/remove-background', {
+                // Use relative URL so it works when served from the API
+                const apiUrl = window.location.origin + '/remove-background';
+                
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     body: formData,
                     signal: controller.signal
